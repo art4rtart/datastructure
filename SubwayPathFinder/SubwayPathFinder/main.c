@@ -84,6 +84,7 @@ void getSubwayNode(const char* filename)
 	int index = 0;
 	int size = 0;
 	const int LASTSTATION = 45;
+	const int FIRSTSTATION = 21;
 
 	if (fp != NULL) {
 		init_graph();
@@ -146,7 +147,6 @@ void getSubwayNode(const char* filename)
 	// 판별
 	for (int i = 0; i < vsize; i++) {
 		for (int j = 1; j < vsize; j++) {
-
 			if (subway[i].nextNum == 1)											// 순환 호선일 경우
 				insert_edge2(i, 0, subway[i].weight);
 
@@ -154,8 +154,8 @@ void getSubwayNode(const char* filename)
 			if (subway[i].stationNum == subway[j].stationNum) {					// 호선이 같고
 				if (subway[i].currentNum == subway[j].currentNum - 1)			// 현재역의 다음역 번호가 다음역 번호라면 -> 현재역과 다음역이 연결 되어있다면
 					insert_edge2(i, j, subway[i].weight);						// 거리(가중치)를 입력
-				
-				if(subway[i].currentNum == LASTSTATION)
+
+				if (subway[i].currentNum == LASTSTATION && subway[j].currentNum == FIRSTSTATION)
 					insert_edge2(i, j, subway[i].weight);
 			}
 
@@ -169,38 +169,17 @@ void getSubwayNode(const char* filename)
 	}
 }
 
-void printSubwayNode()
+void saveSubwayNode()
 {
 	FILE * fp = fopen("subwayWeightGraph.txt", "w");	// 가중치 저장 텍스트 쓰기(write)
 
-	// 이쁘게 출력하기위한 코드
-	// 가로 역이름
-	printf("\t       ");
-	for (int i = 0; i < vsize; i++) {
-		printf("%s  ", subway[i].stationName);
-	}
-	printf("\n\n");
-
 	// 세로 역 이름 및 가중치 값
 	for (int i = 0; i < vsize; i++) {
-		printf("%s", subway[i].stationName);
 		fputs(subway[i].stationName, fp);
 		fputs("\t", fp);
 
-		// 글자와 숫자 사이의 공백
-		if (strlen(subway[i].stationName) < 8)
-			printf("\t  ");
-		
-		else if (strlen(subway[i].stationName) == 8)		// 출력이 안이뻐서 임의로 조절하는 코드
-			printf("  ");
-
-		else
-			printf("");
-
 		// 입력된 가중치 출력
 		for (int j = 0; j < vsize; j++) {			
-			printf("%8.1d", adj[i][j]);
-
 			// 출력과 동시에 가중치 텍스트 파일에 가중치를 저장
 			char str[10];
 			itoa(adj[i][j], str, 10);
@@ -208,7 +187,6 @@ void printSubwayNode()
 			fputs(" ", fp);  // 보기 좋게 하기 위해 공백 입력
 		}
 		fputs("\n", fp);	 // 보기 좋게 하기 위해 줄 바꿈
-		printf("\n\n");
 	}
 
 	fclose(fp);											// 가중치 저장 텍스트 파일 닫기
@@ -237,7 +215,7 @@ void load_wgraph(char *filename)
 
 	fclose(fp);											// 가중치 저장 텍스트 닫기
 
-	printf("weight graph sucessfully loaded.\n");
+	// printf("weight graph sucessfully loaded.\n\n");
 }
 
 void print_wgraph()
@@ -269,7 +247,7 @@ void print_wgraph()
 	}
 }
 
-// Dijkstra의 최단경로 -------------------------------------------------------------
+// 다익스트라 알고리즘 -------------------------------------------------------------
 
 int path[MAX_VTXS];
 int dist[MAX_VTXS];
@@ -287,12 +265,12 @@ void print_step(int step)				// 진행 단계별 상황출력
 
 void print_shortest_path(int start, int end)	// 최종 경로 출력 
 {
-	printf("[최단경로: %s---%s] %s", subway[end].stationName, subway[start].stationName, subway[end].stationName);
+	printf("%s", subway[end].stationName);
 	while (path[end] != start) {
-		printf("-%s", subway[path[end]].stationName);
+		printf(" - %s", subway[path[end]].stationName);
 		end = path[end];
 	}
-	printf("-%s\n", subway[path[end]].stationName);
+	printf(" - %s\n\n", subway[path[end]].stationName);
 }
 
 int choose_vertex()
@@ -320,7 +298,7 @@ void shortest_path_dijkstra(int start)
 	dist[start] = 0;
 
 	for (i = 0; i<vsize; i++) {
-		print_step(i + 1);			// 진행상황 출력용 
+		//print_step(i + 1);			// 진행상황 출력용 
 		u = choose_vertex();
 		found[u] = 1;
 
@@ -335,21 +313,134 @@ void shortest_path_dijkstra(int start)
 	}
 }
 
+// 출력 함수 -----------------------------------------------------------------------
+
+int menu = 0;					// 메뉴 번호
+int goBackToMenu = 0;			// bool 값, true 면 초기 화면으로 돌아감
+
+void selectMenu()
+{
+	printf("지하철 길찾기 프로그램\n");
+	printf("====================================================\n");
+	printf("1. 등록 노선 출력\n");
+	printf("2. 길 찾기\n");
+	printf("3. 시간 내 도착 가능역 검색\n");
+	printf("4. 편집하기\n");
+	printf("5. 종료\n");
+	printf("====================================================\n");
+	printf("메뉴를 선택하세요 : ");
+	scanf("%d", &menu);
+	system("cls");
+}
+
 // 메인 함수 -----------------------------------------------------------------------
 
 int main()
 {
-	//system("mode con cols=170 lines=40");	// 콘솔창 크기 조절
+	system("mode con cols=170 lines=40");	// 콘솔창 크기 조절
+
+	char currentStationName[NAMESIZE];		// 현재 역 이름
+	char nextStationName[NAMESIZE];			// 다음 역 이름
+	
+	int currentStationNum = 0;				// 현재 역 번호
+	int nextStationNum = 0;					// 다음 역 번호
 
 	getSubwayNode("subway.txt");
-	printSubwayNode();
+	saveSubwayNode();
 
 	load_wgraph("subwayWeightGraph.txt");
-	print_wgraph("가중치 그래프");
+	//print_wgraph("가중치 그래프");
 
-	int num = 0;
+	while (1) {
+		selectMenu();
 
-	num = 24;
-	shortest_path_dijkstra(num - 1);	// 시작역 0번은 소요산
-	print_shortest_path(num - 1, 0);	// 0번(소요산)부터 23번(합정) 까지 최단 거리 구하기
+		switch (menu) {
+
+		case 1:
+		#pragma region printData
+			goBackToMenu = 0;
+			// code here
+
+			break;
+		#pragma endregion
+
+		case 2:
+		#pragma region pathFinding
+
+			goBackToMenu = 0;
+			do
+			{
+				printf("길 찾기\n");
+				printf("====================================================\n\n");
+				printf("현재 역을 입력하세요 : ");
+				scanf("%s", &currentStationName);
+				printf("도착 역을 입력하세요 : ");
+				scanf("%s", &nextStationName);
+				printf("====================================================\n\n");
+
+				for (int i = 0; i < vsize; i++) {
+					if (!strcmp(currentStationName, subway[i].stationName))
+					{
+						currentStationNum = subway[i].currentNum;
+					}
+
+					if (!strcmp(nextStationName, subway[i].stationName))
+					{
+						nextStationNum = subway[i].currentNum;
+					}
+				}
+
+				printf("%s 부터 %s 까지의 최단거리\n\n", subway[currentStationNum - 1].stationName, subway[nextStationNum - 1].stationName);
+
+				shortest_path_dijkstra(nextStationNum - 1);	// 시작역 0번은 소요산
+				print_shortest_path(nextStationNum - 1, currentStationNum - 1);	// 0번(소요산)부터 23번(합정) 까지 최단 거리 구하기
+
+				printf("소요 시간 : 40 min \n\n");
+				printf("도착 에정 시간 : 2시 40분 \n\n");
+				printf("====================================================\n");
+				printf("계속하려면 R키를 누르세요.\n");
+				printf("이전으로 돌아가려면 B키를 누르세요.\n");
+
+				while (1) {
+					if (_kbhit()) {
+						if (getch() == 'r') {
+							system("cls");
+							break;
+						}
+						if (getch() == 'b') {
+							goBackToMenu = 1;
+							system("cls");
+							break;
+						}
+					}
+				}
+			} while (goBackToMenu != 1);
+			break;
+		#pragma endregion
+
+		case 3:
+		#pragma region searchIsPossible
+			goBackToMenu = 0;
+			// code here
+
+			break;
+		#pragma endregion
+
+		case 4:
+		#pragma region edit
+			goBackToMenu = 0;
+			// code here
+
+			break;
+		#pragma endregion
+
+		case 5:
+		#pragma region exit
+			exit(0);
+			break;
+		#pragma endregion
+		}
+	}
 }
+
+// ---------------------------------------------------------------------------------
