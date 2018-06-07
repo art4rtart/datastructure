@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <Windows.h>
+#include "main.h"
 
-#define MAX_VTXS 400
-#define INF 999
+#define MAX_VTXS 1000
+#define INF 9999
 #define NAMESIZE 100
 
 // 기존 코드 -----------------------------------------------------------------------
@@ -11,7 +12,7 @@
 #pragma region basic code
 typedef char VtxData;			// 그래프 정점에 저장할 데이터의 자료형 
 int adj[MAX_VTXS][MAX_VTXS];	// 인접 행렬 
-int myarr[MAX_VTXS][MAX_VTXS];	// 인접 행렬 
+//int myarr[MAX_VTXS][MAX_VTXS];	// 인접 행렬 
 int vsize;						// 전체 정점의 개수					
 VtxData vdata[MAX_VTXS];		// 정점에 저장할 데이터 배열
 
@@ -82,6 +83,7 @@ void getSubwayNode(const char* filename)
 	char readData[NAMESIZE];							// 파일에서 읽은 값 저장할 장소
 	int index = 0;
 	int size = 0;
+	const int LASTSTATION = 45;
 
 	if (fp != NULL) {
 		init_graph();
@@ -152,6 +154,9 @@ void getSubwayNode(const char* filename)
 			if (subway[i].stationNum == subway[j].stationNum) {					// 호선이 같고
 				if (subway[i].currentNum == subway[j].currentNum - 1)			// 현재역의 다음역 번호가 다음역 번호라면 -> 현재역과 다음역이 연결 되어있다면
 					insert_edge2(i, j, subway[i].weight);						// 거리(가중치)를 입력
+				
+				if(subway[i].currentNum == LASTSTATION)
+					insert_edge2(i, j, subway[i].weight);
 			}
 
 			else																// 호선이 같지 안고
@@ -223,9 +228,9 @@ void load_wgraph(char *filename)
 			for (int j = 0; j < vsize; j++) {
 				fscanf(fp, "%s", readData);
 				if (i != j && atoi(readData) == 0)
-					myarr[i][j] = INF;
+					adj[i][j] = INF;
 				else
-					myarr[i][j] = atoi(readData);
+					adj[i][j] = atoi(readData);
 			}
 		}
 	}
@@ -255,10 +260,10 @@ void print_wgraph()
 			printf("  ");
 
 		for (int j = 0; j < vsize; j++) {
-			weight = myarr[i][j];
-			if (i == j) printf("  0 ");
-			else if (weight >= INF) printf("  - ");
-			else printf("%3d ", weight);
+			weight = adj[i][j];
+			if (i == j) printf(" 0 ");
+			else if (weight >= INF) printf(" - ");
+			else printf("%2d ", weight);
 		}
 		printf("\n");
 	}
@@ -275,14 +280,14 @@ void print_step(int step)				// 진행 단계별 상황출력
 	int i;
 	printf(" Step%2d:", step);
 	for (i = 0; i<vsize; i++)
-		if (dist[i] == INF) printf("  INF");
-		else printf("%5d", dist[i]);
+		if (dist[i] == INF) printf("  x");
+		else printf("%3d", dist[i]);
 		printf("\n");
 }
 
 void print_shortest_path(int start, int end)	// 최종 경로 출력 
 {
-	printf("[최단경로: %s---%s] %s", subway[start].stationName, subway[end].stationName, subway[end].stationName);
+	printf("[최단경로: %s---%s] %s", subway[end].stationName, subway[start].stationName, subway[end].stationName);
 	while (path[end] != start) {
 		printf("-%s", subway[path[end]].stationName);
 		end = path[end];
@@ -306,10 +311,11 @@ void shortest_path_dijkstra(int start)
 {
 	int i, u, w;
 	for (i = 0; i<vsize; i++) {
-		dist[i] = myarr[start][i];
+		dist[i] = adj[start][i];
 		path[i] = start;
 		found[i] = 0;
 	}
+
 	found[start] = 1;
 	dist[start] = 0;
 
@@ -320,8 +326,8 @@ void shortest_path_dijkstra(int start)
 
 		for (w = 0; w<vsize; w++) {
 			if (found[w] == 0) {
-				if (dist[u] + myarr[u][w] < dist[w]) {
-					dist[w] = dist[u] + myarr[u][w];
+				if (dist[u] + adj[u][w] < dist[w]) {
+					dist[w] = dist[u] + adj[u][w];
 					path[w] = u;
 				}
 			}
@@ -333,7 +339,7 @@ void shortest_path_dijkstra(int start)
 
 int main()
 {
-	system("mode con cols=170 lines=40");	// 콘솔창 크기 조절
+	//system("mode con cols=170 lines=40");	// 콘솔창 크기 조절
 
 	getSubwayNode("subway.txt");
 	printSubwayNode();
@@ -341,6 +347,9 @@ int main()
 	load_wgraph("subwayWeightGraph.txt");
 	print_wgraph("가중치 그래프");
 
-	shortest_path_dijkstra(0);	// 시작역 0번은 소요산
-	print_shortest_path(0, 23);	// 0번(소요산)부터 23번(합정) 까지 최단 거리 구하기
+	int num = 0;
+
+	num = 24;
+	shortest_path_dijkstra(num - 1);	// 시작역 0번은 소요산
+	print_shortest_path(num - 1, 0);	// 0번(소요산)부터 23번(합정) 까지 최단 거리 구하기
 }
