@@ -5,7 +5,7 @@
 
 #define MAX_VTXS 1000
 #define INF 9999
-#define NAMESIZE 100
+#define NAMESIZE 500
 
 // 기존 코드 -----------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ struct Subway
 	char stationName[NAMESIZE];			// 현재 역 이름
 	char nextStationName[NAMESIZE];		// 다음 역 이름
 
-	int stationNum;				// 현재 역 호선
+	int stationNum;					// 현재 역 호선
 
 	int currentNum;					// 현재 역 번호
 	int nextNum;					// 다음 역 번호
@@ -70,6 +70,8 @@ struct Subway
 	int changeStationStationNum;	// 환승 역 호선 번호
 	int changeStationNum;			// 환승 역 번호
 	int changeStationWeight;		// 현재역과 환승역간의 거리 (가중치)
+
+	int arriveTime;					// 도착하는데 걸리는 시간
 };
 
 struct Subway subway[NAMESIZE];
@@ -161,8 +163,8 @@ void getSubwayNode(const char* filename)
 
 			else																// 호선이 같지 안고
 			{
-				if(subway[i].changeStationStationNum == subway[j].stationNum)	// 현재역과 연결된 환승역의 호선이 환승역의 호선과 같다면 -> 나중에 설명 드리겠습니다. 
-					if (subway[i].changeStationNum == subway[j].currentNum)		// 현재역의 환승역 번호가 환승역 번호라면	-> 제가 적었지만 저도 뭔소린지 모르겠습니다.
+				if(subway[i].changeStationStationNum == subway[j].stationNum)	// 현재역과 연결된 환승역의 호선이 환승역의 호선과 같다면
+					if (subway[i].changeStationNum == subway[j].currentNum)		// 현재역의 환승역 번호가 환승역 번호라면
 						insert_edge2(i, j, subway[i].changeStationWeight);		// 거리(가중치)를 입력
 			}
 		}
@@ -313,6 +315,87 @@ void shortest_path_dijkstra(int start)
 	}
 }
 
+
+// 힙 ------------------------------------------------------------------------------
+
+#include <stdio.h>
+#include <stdlib.h>
+#define MAX_HEAP_NODE	200
+
+
+typedef int HNode;
+#define Key(n)   (n) 
+
+HNode heap[MAX_HEAP_NODE];
+int heap_size;
+
+#define Parent(i) (heap[i/2])		// i의 부모 노드 
+#define Left(i) (heap[i*2])		// i의 왼쪽 자식 노드 
+#define Right(i) (heap[i*2+1])	// i의 오른쪽 자식 노드 
+
+void init_heap() { heap_size = 0; }
+int is_empty_heap() { return heap_size == 0; }
+int is_full_heap() { return (heap_size == MAX_HEAP_NODE - 1); }
+HNode find_heap() { return heap[1]; }
+
+void insert_heap(HNode n)
+{
+	int i;
+	if (is_full_heap()) return;
+	i = ++(heap_size);
+	while (i != 1 && Key(n) > Key(Parent(i))) {
+		heap[i] = Parent(i);
+		i /= 2;
+	}
+	heap[i] = n;
+}
+
+HNode delete_heap()
+{
+	HNode hroot, last;
+	int parent = 1, child = 2;
+
+	if (is_empty_heap() != 0)
+		error("힙 트리 공백 에러");
+
+	hroot = heap[1];
+	last = heap[heap_size--];
+	while (child <= heap_size) {
+		if (child<heap_size && Key(Left(parent))<Key(Right(parent)))
+			child++;
+		if (Key(last) >= Key(heap[child]))
+			break;
+		heap[parent] = heap[child];
+		parent = child;
+		child *= 2;
+	}
+	heap[parent] = last;
+	return hroot;
+}
+
+void print_heap()
+{
+	int i, level;
+	for (i = 1, level = 1; i <= heap_size; i++) {
+		if (i == level) {
+			printf("\n");
+			level *= 2;
+		}
+		printf("%2d ", Key(heap[i]));
+	}
+	printf("\n-----------");  
+}
+
+void print_array(int a[], int n, char* msg)
+{
+	int i;
+	printf("%10s : ", msg);
+	for (int i = 0; i < n; i++)
+		printf("%3d ", a[i]);
+	printf("\n");
+}
+
+
 // 출력 함수 -----------------------------------------------------------------------
 
 int menu = 0;					// 메뉴 번호
@@ -333,6 +416,27 @@ void selectMenu()
 	system("cls");
 }
 
+void checkMenu()
+{
+	printf("\n====================================================\n");
+	printf("계속하려면 R키를 누르세요.\n");
+	printf("이전으로 돌아가려면 B키를 누르세요.\n");
+
+	while (1) {
+		if (_kbhit()) {
+			if (getch() == 'r') {
+				system("cls");
+				break;
+			}
+			if (getch() == 'b') {
+				goBackToMenu = 1;
+				system("cls");
+				break;
+			}
+		}
+	}
+}
+
 // 메인 함수 -----------------------------------------------------------------------
 
 int main()
@@ -351,6 +455,7 @@ int main()
 	load_wgraph("subwayWeightGraph.txt");
 	//print_wgraph("가중치 그래프");
 
+
 	while (1) {
 		selectMenu();
 
@@ -360,13 +465,69 @@ int main()
 		#pragma region printData
 			goBackToMenu = 0;
 			// code here
+			do {
+				int stationNumber;
+				int input;
 
+				printf("등록 노선 출력\n");
+				printf("====================================================\n");
+				printf("호선을 입력하세요 : ");
+				scanf("%d", &stationNumber);
+
+				system("cls");
+
+				printf("%d 호선\n", stationNumber);
+				printf("====================================================\n");
+				printf("1. 등록 지하철 출력\n");
+				printf("2. 환승역 출력\n");
+				printf("3. 이전으로 돌아가기\n");
+				printf("====================================================\n");
+				printf("입력 : ");
+				scanf("%d", &input);
+
+
+				int STATIONSTARTLINE[6] = { 0, 39, 81, 124, 170, 213 };
+				int STATIONENDLINE[6] = { 39, 81, 124, 170, 213, 251 };
+
+				if (input == 1)
+				{
+					printf("\n");
+					for (int i = STATIONSTARTLINE[stationNumber-1]; i < STATIONENDLINE[stationNumber - 1]; i++)
+						printf("%s ", subway[i].stationName);
+					printf("\n");
+					printf("계속하시려면 r 을 누르세요");
+
+					if (getch() == 'r') {
+						system("cls");
+						continue;
+					}
+				}
+
+				else if (input == 2) {
+					printf("\n");
+					for (int i = STATIONSTARTLINE[stationNumber - 1]; i < STATIONENDLINE[stationNumber - 1]; i++)
+						if (subway[i].isChangeStation)
+							printf("%s ", subway[i].stationName);
+					printf("\n\n");
+					printf("계속하시려면 r 을 누르세요");
+
+					if (getch() == 'r') {
+						system("cls");
+						continue;
+					}
+				}
+
+				else if (input == 3)
+					system("cls");
+					break;
+
+				checkMenu();
+			} while (goBackToMenu != 1);
 			break;
 		#pragma endregion
 
 		case 2:
 		#pragma region pathFinding
-
 			goBackToMenu = 0;
 			do
 			{
@@ -397,23 +558,7 @@ int main()
 
 				printf("소요 시간 : 40 min \n\n");
 				printf("도착 에정 시간 : 2시 40분 \n\n");
-				printf("====================================================\n");
-				printf("계속하려면 R키를 누르세요.\n");
-				printf("이전으로 돌아가려면 B키를 누르세요.\n");
-
-				while (1) {
-					if (_kbhit()) {
-						if (getch() == 'r') {
-							system("cls");
-							break;
-						}
-						if (getch() == 'b') {
-							goBackToMenu = 1;
-							system("cls");
-							break;
-						}
-					}
-				}
+				checkMenu();
 			} while (goBackToMenu != 1);
 			break;
 		#pragma endregion
@@ -421,8 +566,85 @@ int main()
 		case 3:
 		#pragma region searchIsPossible
 			goBackToMenu = 0;
-			// code here
+			do {
+				int haveTime;
 
+				printf("시간 내 갈 수 있는 역 찾기\n");
+				printf("====================================================\n\n");
+				printf("현재 역을 입력하세요 : ");
+				scanf("%s", &currentStationName);
+				printf("\n");
+
+				printf("시간을 입력하세요 (분단위) :");
+				scanf("%d", &haveTime);
+				printf("\n");
+
+				printf("%s 에서 %d분 내로 갈 수 있는 역을 검색합니다\n\n", &currentStationName, haveTime);
+
+				int leadTime = 0;
+				int searchIndex = 0;
+				int checkPoint = 1;
+				init_heap();
+
+				while (1) {
+					if (!strcmp(currentStationName, subway[searchIndex].stationName))
+					{
+						int currentStationIndex = searchIndex;
+
+						while (leadTime < haveTime) {
+							leadTime += subway[currentStationIndex].weight;
+
+							if (currentStationIndex - checkPoint > 0) {
+								subway[currentStationIndex - checkPoint].arriveTime = leadTime;
+								insert_heap(currentStationIndex - checkPoint);
+							}
+
+							if (currentStationIndex + checkPoint < vsize) {
+								subway[currentStationIndex + checkPoint].arriveTime = leadTime;
+								insert_heap(currentStationIndex + checkPoint);
+							}
+
+							checkPoint++;
+						}
+						break;
+
+						printf("\n\n");
+					}
+					searchIndex++;
+				}
+
+
+				int dist[1000];
+				int distIndex = 0;
+
+				while (!is_empty_heap()) {
+					int index = Key(delete_heap());
+
+					dist[distIndex++] = subway[index].arriveTime;
+				}
+
+				init_heap();
+				for (int i = 0; i < distIndex; i++)
+					insert_heap(dist[i]);
+
+				int maxSize = vsize;
+
+				for (int i = 1; i < distIndex; i++)
+				{
+					int leadTime = Key(delete_heap());
+					if (searchIndex + i < maxSize) {
+						printf("[ %s ] 부터 [ %s ] 까지의 %d 분 소요 됩니다. \n"
+							, subway[searchIndex].stationName, subway[searchIndex + i].stationName, leadTime);
+					}
+
+					if (searchIndex - i > 0) {
+						printf("[ %s ] 부터 [ %s ] 까지의 %d 분 소요 됩니다. \n"
+							, subway[searchIndex].stationName, subway[searchIndex - i].stationName, leadTime);
+					}
+				}
+
+				checkMenu();
+			} while (goBackToMenu != 1);
 			break;
 		#pragma endregion
 
@@ -442,5 +664,4 @@ int main()
 		}
 	}
 }
-
 // ---------------------------------------------------------------------------------
